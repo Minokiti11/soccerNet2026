@@ -22,42 +22,213 @@
 
 `sskit` の簡易 baseline は，一般物体検出器で人を検出し，bbox 下辺中央を選手位置とみなして地面へ射影する．
 
-概略:
+概略：
 
 1. image 上で `person` detection
 2. bbox の `bottom center` を取る
-3. camera calibration で ground plane に射影
+3. データ付属の camera model で ground plane に射影
 4. world coordinate 上で評価
 
 これは最小構成としては分かりやすいが，真の player location の proxy としては粗い．
 
-Source:
+実装上の具体像も単純で，`sskit/baseline.py` は `ultralytics/yolov5` の `yolov5x6` を読み込み，`person` detection の各 bbox から `(x_center, y_bottom)` を作り，それを
 
-* <https://github.com/Spiideo/sskit>
+```python
+image_to_ground(camera_matrix, undist_poly, normalized_image_point)
+```
+
+で pitch 座標へ変換している．
+
+つまり，この baseline は次のことをしていない．
+
+* pitch registration の推定
+
+* camera calibration の推定
+
+* tracking
+
+* ReID
+
+* direct world-coordinate regression
+
+やっているのは「既知の camera model を使って，bbox 下辺中央を地面へ落とす」だけである．
+
+Source：
+
+* <https://github.com/Spiideo/sskit/blob/master/baseline.py>
+
+* <https://github.com/Spiideo/sskit/blob/master/sskit/camera.py>
 
 ### 1.2 Official mmpose baseline
 
-公式 baseline は `Spiideo/mmpose` の `spiideo_scenes` ブランチで，`YOLOX-pose` ベースの top-down pose 系を使う．
+公式 baseline は `Spiideo/mmpose` の `spiideo_scenes` ブランチで，`YOLOX-pose` を SynLoc 用に縮約した one-stage / bottom-up 系を使う．
 
-重要な点:
+重要な点：
 
 * 検出対象は人
 
-* 回帰する keypoint は 2 個
+* 1 個の head が bbox と keypoint を同時に出す
+
+* 回帰する keypoint は 2 個だけ
 
 * `pelvis` = 骨盤
 
-* `pelvis_ground`
+* `pelvis_ground` = その骨盤を地面平面 `z=0` へ落とした点
 
 `pelvis_ground` は player pelvis を ground plane に正射影した点に対応する．評価もこの点を world-space に戻した位置で行う．
 
-Source:
+ここで重要なのは，これは「人検出器の後ろに別の pose 推定器を載せる top-down 2 段構成」ではないことだ．`YOLOXPoseHead` の実装を見ると，3 つの feature map stride 上で同時に次を予測している．
+
+* class score
+
+* objectness
+
+* bbox
+
+* keypoint offset
+
+* keypoint visibility
+
+つまり，公式 baseline は「物体検出だけ」でも「姿勢推定だけ」でもなく，`bbox + 2 keypoints` を 1 段で同時予測する detector-pose hybrid である．
+
+Source：
 
 * <https://github.com/Spiideo/mmpose/tree/spiideo_scenes>
 
-* <https://raw.githubusercontent.com/Spiideo/mmpose/spiideo_scenes/configs/body_bev_position/spiideo_soccernet/yoloxpose_m_4xb64-300e_640.py>
+* <https://github.com/Spiideo/mmpose/blob/spiideo_scenes/configs/body_bev_position/spiideo_soccernet/yoloxpose_m_4xb64-300e_640.py>
 
-* <https://raw.githubusercontent.com/Spiideo/mmpose/spiideo_scenes/configs/_base_/datasets/spiideo_soccernet_synloc.py>
+* <https://github.com/Spiideo/mmpose/blob/spiideo_scenes/configs/body_2d_keypoint/yoloxpose/coco/yoloxpose_s_8xb32-300e_coco-640.py>
+
+* <https://github.com/Spiideo/mmpose/blob/spiideo_scenes/mmpose/models/heads/hybrid_heads/yoloxpose_head.py>
+
+* <https://github.com/Spiideo/mmpose/blob/spiideo_scenes/configs/_base_/datasets/spiideo_soccernet_synloc.py>
+
+### 1.3 How the official baseline is trained
+
+config を追うと，SynLoc baseline は COCO 用 `YOLOX-pose` config を土台にして，SynLoc 用に次を差し替えている．
+
+* dataset を `SpiideoSoccerNetSynLocDataset` に変更
+
+* evaluator を `bbox`, `locsim_bbox`, `locsim` に変更
+
+* keypoint 数を `17` から `2` へ変更
+
+* OKS の metainfo を COCO 17 点ではなく `pelvis`, `pelvis_ground` 用に変更
+
+* learning rate などを SynLoc 用に調整
+
+学習 label 側も，`sskit/make_coco.py` が明示的に
+
+* `keypoints[0] = pelvis`
+
+* `keypoints[1] = pelvis_ground`
+
+* `position_on_pitch = [x_world, y_world]`
+
+を作っている．ここでの `x_world, y_world` は，データセット構築時の 3D レンダリング空間で既知な人物 world 座標に由来する．つまり正解 annotation 自体が，3D レンダリング時の world 座標から自動生成されている．したがって，baseline は画像から直接 pitch 座標を回帰しているのではなく，「まず画像上の 2 点を当てる」設計だと言える．
+
+Source：
+
+* <https://github.com/Spiideo/mmpose/blob/spiideo_scenes/configs/body_bev_position/spiideo_soccernet/synloc.py>
+
+* <https://github.com/Spiideo/mmpose/blob/spiideo_scenes/configs/_base_/datasets/spiideo_soccernet_synloc.py>
+
+* <https://github.com/Spiideo/sskit/blob/master/make_coco.py>
+
+### 1.4 What the baseline outputs at inference time
+
+`tools/test.py` と `CocoMetric.results2json()` を読むと，baseline 推論の最終出力は `position_on_pitch` 直書きではない．出力される `results.json` は convenience format であり，各 detection は概ね次を持つ．
+
+* `image_id`
+
+* `category_id`
+
+* `bbox`
+
+* `keypoints`
+
+* `score`
+
+つまり，出力値は「pitch 上の `(x, y)` そのもの」ではなく，「画像上の `pelvis` と `pelvis_ground` の 2 点とその score」である．そこから evaluator / server 側が `position_from_keypoint_index=1` を見て `pelvis_ground` を pitch 上位置へ変換する．
+
+`metadata.json` は baseline 実装では
+
+```json
+{
+  "score_threshold": ...,
+  "position_from_keypoint_index": 1
+}
+```
+
+となる．ここで `1` は 2 個目の keypoint，すなわち `pelvis_ground` を指す．
+
+Source：
+
+* <https://github.com/Spiideo/mmpose/blob/spiideo_scenes/mmpose/evaluation/metrics/coco_metric.py>
+
+* <https://github.com/Spiideo/mmpose/blob/spiideo_scenes/tools/test.py>
+
+### 1.5 How `pelvis_ground` is converted to pitch coordinates
+
+この点は implementation 上かなり明確で，`sskit.coco.LocSimCOCOeval` の流れは次である．
+
+1. detection の `keypoints` から `position_from_keypoint_index` 番目の image-space point を取り出す
+2. 画像サイズ `w, h` を使って
+   `((x, y) - ((w - 1) / 2, (h - 1) / 2)) / w`
+   に正規化する
+3. それを `image_to_ground(camera_matrix, undist_poly, normalized_point)` へ入れる
+4. 返ってきた ground 座標の先頭 2 次元を `bev_dt[:, :2]` として評価に使う
+
+式の形だけ書くと，
+
+```text
+pixel keypoint
+  -> normalized image point
+  -> undistort with undist_poly
+  -> project to ground with inverse camera geometry
+  -> (x_pitch, y_pitch)
+```
+
+である．
+
+ここでもポイントは，同じく baseline は pitch registration を推定していないことだ．camera geometry は image ごとに annotation に入っており，それを使って幾何変換しているだけである．
+
+比較用の `locsim_bbox` では，この `position_from_keypoint_index` の代わりに bbox 下辺中央を使う．だからこそ，baseline config が `locsim_bbox` を別 metric として残しているのは，「bbox 下辺中央だけに頼るとどこまで落ちるか」を可視化するためと理解できる．
+
+Source：
+
+* <https://github.com/Spiideo/sskit/blob/master/sskit/coco.py>
+
+* <https://github.com/Spiideo/sskit/blob/master/sskit/camera.py>
+
+### 1.6 Public pre-trained models are what kind of models?
+
+公式 README に載っている `YOLOX-tiny`, `YOLOX-s`, `YOLOX-m` は，いずれも SynLoc 専用にゼロから設計された新規アーキテクチャではない．
+
+* backbone / neck / head の骨格は OpenMMLab 系 `YOLOX-pose`
+
+* tiny と s は COCO 学習済み YOLOX checkpoint を初期値に使う
+
+* m も COCO 系 pretrained checkpoint を初期値に使う
+
+* その上で SynLoc の 2-keypoint task に fine-tune した checkpoint が `research.spiideo.com` から配布される
+
+したがって，「公開されている事前学習モデル」は，
+
+1. OpenMMLab / COCO 側の一般人体検出・姿勢推定向け pretrained model
+2. それを SynLoc task に fine-tune した task-specific checkpoint
+
+の 2 層に分けて理解するとよい．
+
+Source：
+
+* <https://github.com/Spiideo/mmpose/blob/spiideo_scenes/README.md>
+
+* <https://github.com/Spiideo/mmpose/blob/spiideo_scenes/configs/body_2d_keypoint/yoloxpose/coco/yoloxpose_tiny_4xb64-300e_coco-640.py>
+
+* <https://github.com/Spiideo/mmpose/blob/spiideo_scenes/configs/body_2d_keypoint/yoloxpose/coco/yoloxpose_m_8xb32-300e_coco-640.py>
+
+* <https://github.com/Spiideo/mmpose/blob/spiideo_scenes/configs/body_bev_position/spiideo_soccernet/yoloxpose_m_4xb64-300e_960.py>
 
 ## 2. What The SynLoc Paper Shows
 
@@ -77,7 +248,7 @@ SynLoc 論文では，bbox ベースと pose ベースを直接比較してい�
 
 * `pose 960x960`: `mAP-LocSim 79.3`
 
-Source:
+Source：
 
 * <https://www.scitepress.org/Papers/2025/131082/131082.pdf>
 
@@ -98,7 +269,7 @@ Source:
 
 ただし，これは moving camera の broadcast 動画だから成立する話で，SynLoc 2026 では calibration が与えられ，しかも単一フレームなので，tracking/ReID/calibration については考えなくてよい．
 
-Source:
+Source：
 
 * <https://raw.githubusercontent.com/SoccerNet/sn-gamestate/main/README.md>
 
@@ -116,7 +287,7 @@ Source:
 
 SynLoc 2026 では calibration が既知なので，この pipeline 全体を持ち込む必要はない．参考にすべきなのは「image-space から world-space への幾何の扱い方」であり，tracking 系そのものではない．
 
-Source:
+Source：
 
 * <https://www.mdpi.com/1424-8220/23/18/7938>
 
@@ -152,7 +323,7 @@ Source:
 
 最も自然な改善案は，`2-keypoint` 表現を拡張すること．
 
-候補:
+候補：
 
 * `pelvis`, `pelvis_ground`, `left_foot`, `right_foot`
 
@@ -160,7 +331,7 @@ Source:
 
 * `bbox` と `pose point` のハイブリッド
 
-狙い:
+狙い：
 
 * 遮蔽時に単一 keypoint より頑健にする
 
@@ -170,13 +341,13 @@ Source:
 
 image keypoint を経由せず，検出ごとに `(x_world, y_world)` を直接回帰する案もある．
 
-利点:
+利点：
 
 * task に対して表現が直接的
 
 * image-space keypoint の誤差を world-space へ変換する段階を減らせる
 
-懸念:
+懸念：
 
 * 公式 baseline や devkit と表現がずれる
 
@@ -202,7 +373,7 @@ image keypoint を経由せず，検出ごとに `(x_world, y_world)` を直接�
 
 SynLoc は synthetic player を real background に合成したデータであり，ドメインギャップは依然としてある．
 
-有望な方向:
+有望な方向：
 
 * color jitter の強化
 
@@ -214,7 +385,7 @@ SynLoc は synthetic player を real background に合成したデータであ�
 
 * stronger occlusion augmentation
 
-さらに可能なら:
+さらに可能なら：
 
 * 公開 real soccer imagery を使った self-training
 
@@ -226,7 +397,7 @@ SynLoc は synthetic player を real background に合成したデータであ�
 
 `mAP-LocSim` は「見つけること」と「位置が近いこと」の両方を見るため，confidence の設計が重要である．
 
-やるべきこと:
+やるべきこと：
 
 * validation で `score_threshold` を決める
 
