@@ -1,0 +1,12 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+data/
+
+baseline/.venv/
+baseline/mmpose/
+baseline/checkpoints/*
+!baseline/checkpoints/.gitkeep
+baseline/outputs/*
+!baseline/outputs/.gitkeep
