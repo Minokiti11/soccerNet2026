@@ -32,9 +32,9 @@ SoccerNet 2026 の公式ページでは，この課題を「Single-Frame World-C
 
 評価指標は `mAP-LocSim` である．これは COCO 形式のmAP(`mean Average Precision`, 平均適合率) をベースにしつつ，通常の IoU の代わりに `LocSim` を使って，検出とピッチ座標推定を同時に評価する指標である．
 
-**mAPってなんだっけ：**
+**mAPについて復習：**
 
-まず適合率曲線の面積 (`Average Precision`, `AP`) は，ある対応付け条件 (`matching criterion`) を固定したときの `precision-recall curve` の面積である．ここで対応付け条件とは，「ある予測を正解とみなしてよい条件」のことである．SynLoc では，この条件は後述の `LocSim >= t` で与えられる．高confidenceの prediction から順に並べ，
+まず`AP`(`Average Precision`) は，ある対応付け条件 (`matching criterion`) を固定したときの `precision-recall` 曲線の面積である．ここで対応付け条件とは，「ある予測を正解とみなしてよい条件」のことである．SynLoc では，この条件は後述の `LocSim >= t` で与えられる．高confidenceの prediction から順に並べ，
 
 * その prediction が GT とマッチすれば `TP` (`True Positive`)
 
@@ -42,9 +42,7 @@ SoccerNet 2026 の公式ページでは，この課題を「Single-Frame World-C
 
 として `precision` (適合率) と `recall` (再現率) を累積的に計算し，その曲線の面積を `AP` とする．
 
-平均適合率 (`mAP`) はその `AP` を複数の閾値で平均したものだと考えればよい．
-
-<br />
+`mAP` （平均適合率） はその `AP` を複数の閾値・クラスで平均したものだと考えればよい．今回はクラスがplayerの一つだけ．
 
 このmAPは，COCO 形式では通常 `IoU threshold` `0.50, 0.55, ..., 0.95` で AP を計算して平均するが，SynLoc ではこの IoU の代わりに `LocSim threshold` `t` を使う．ここで使う `t` は `0.50, 0.55, ..., 0.95` の 10 個である．
 
@@ -160,8 +158,6 @@ baseline README では，`Spiideo/mmpose` の `spiideo_scenes` ブランチで `
 * validation で決めた `score_threshold` を記録する
 
 * 追加改善を入れる場合も，使用データが公開・再現可能であることを都度確認する
-
-* 提出直前は締切日・提出形式・Codabench の受付状態を再確認する
 
 ## Sources
 
