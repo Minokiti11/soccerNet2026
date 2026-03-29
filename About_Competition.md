@@ -44,6 +44,8 @@ SoccerNet 2026 の公式ページでは，この課題を「Single-Frame World-C
 
 `mAP` （平均適合率） はその `AP` を複数の閾値・クラスで平均したものだと考えればよい．今回はクラスがplayerの一つだけ．
 
+参考: <https://qiita.com/cv_carnavi/items/08e11426e2fac8433fed#5-ap-map>
+
 このmAPは，COCO 形式では通常 `IoU threshold` `0.50, 0.55, ..., 0.95` で AP を計算して平均するが，SynLoc ではこの IoU の代わりに `LocSim threshold` `t` を使う．ここで使う `t` は `0.50, 0.55, ..., 0.95` の 10 個である．
 
 したがって `mAP-LocSim` は概念的には
@@ -144,8 +146,6 @@ baseline README では，`Spiideo/mmpose` の `spiideo_scenes` ブランチで `
 * baseline 実装は `Spiideo/mmpose` の `spiideo_scenes` ブランチ
 
 * devkit は `Spiideo/sskit`
-
-* baseline README には，paper 掲載値と leaderboard 値に差があり，これは `sskit` 側の bug fix 後に評価値が少し変わったためと記載されている．
 
 * データダウンロードは `research.spiideo.com` 経由，または `SoccerNet` Python package を用いた取得手順が案内されている．
 

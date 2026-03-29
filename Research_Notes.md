@@ -8,7 +8,7 @@
 
 * SynLoc 系では `bbox -> bottom center -> camera projection` より `pose/keypoint -> pelvis_ground -> camera projection` が明確に有利．
 
-* 公式 baseline も `YOLOX-pose` 系で，`pelvis` と `pelvis_ground` の 2 keypoint を直接回帰する．
+* 公式 baseline も `YOLOX-pose` 系で，`pelvis` と `pelvis_ground` の 2 keypoint を直接回帰している．
 
 * 去年や近い年の broadcast 系タスクで強い `tracking + ReID + field calibration` は，SynLoc 2026 では主役ではない．
 
@@ -45,7 +45,7 @@ Source:
 
 * 回帰する keypoint は 2 個
 
-* `pelvis`
+* `pelvis` = 骨盤
 
 * `pelvis_ground`
 
@@ -67,7 +67,7 @@ SynLoc 論文では，bbox ベースと pose ベースを直接比較してい�
 
 * bbox の下辺中央は，真の player ground position の近似として弱い
 
-* `pelvis` （'骨盤'という意味）と `ground projection of pelvis` のような幾何的に意味のある点を学習した方がよい
+* `pelvis` と `pelvis_ground` のような幾何的に意味のある点を学習した方がよい
 
 * 入力解像度を上げると成績がかなり改善する
 
@@ -76,8 +76,6 @@ SynLoc 論文では，bbox ベースと pose ベースを直接比較してい�
 * `bbox 960x960`: `mAP-LocSim 52.4`
 
 * `pose 960x960`: `mAP-LocSim 79.3`
-
-差が大きいため，このタスクで最優先なのは bbox を磨くことではなく，`position-defining point` をどれだけ正確に出せるかだと考えてよい．
 
 Source:
 

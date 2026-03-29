@@ -1,109 +1,81 @@
 # baseline/README.md
 
-## Purpose
+## 概要
 
-このディレクトリは，`Spiideo SoccerNet SynLoc 2026` の公式 baseline を再現・実験するための作業場所である．
+このディレクトリは，`Spiideo SoccerNet SynLoc 2026` の公式 baseline をこのリポジトリから実行するための入口である．上流の実装本体は [baseline/mmpose](/Users/minorisugimura/GitHub/soccerNet2026/baseline/mmpose) にあり，このディレクトリには checkpoint の置き場所と実行用 script を置く．
 
-## Current State
+## 上流
 
-- 公式 baseline repo を `baseline/mmpose` に clone 済み
-- branch は `spiideo_scenes` に checkout 済み
-- `baseline/.python-version` は `3.10.13`
-- `baseline/.venv` は作成済み
-- `torch` / `torchvision` は `baseline/.venv` に導入済み
-- `mmcv` は macOS arm64 のローカル環境では prebuilt wheel が取れず，source build に落ちて失敗した
-- このため，baseline 実行環境は Docker を第一候補にする
+- repository: <https://github.com/Spiideo/mmpose>
+- branch: `spiideo_scenes`
+- upstream README: [baseline/mmpose/README.md](/Users/minorisugimura/GitHub/soccerNet2026/baseline/mmpose/README.md)
 
-## Official Upstream
+## 前提
 
-- Repo: <https://github.com/Spiideo/mmpose>
-- Branch: `spiideo_scenes`
-- Paper / README: [baseline/mmpose/README.md](/Users/minorisugimura/GitHub/soccerNet2026/baseline/mmpose/README.md)
+- データセットが [data/SoccerNet/SpiideoSynLoc](/Users/minorisugimura/GitHub/soccerNet2026/data/SoccerNet/SpiideoSynLoc) にあること
+- checkpoint を [baseline/checkpoints](/Users/minorisugimura/GitHub/soccerNet2026/baseline/checkpoints) に置くこと
+- `Docker` が使えること
 
-## Expected Layout
+## ディレクトリ構成
 
 ```text
 baseline/
 ├── README.md
+├── Colab_Jupyter.md
 ├── checkpoints/
 ├── outputs/
 ├── run_eval.sh
 ├── run_challenge.sh
-├── run_mmpose_docker.sh
+├── run_eval_local.sh
+├── run_challenge_local.sh
 └── mmpose/
 ```
 
-## First Things To Try
+## checkpoint の置き場所
 
-### 1. Install dependencies
-
-公式 README では Docker イメージ `hakanardo/mmpose` の利用例が書かれている．ローカル実行するなら，まず `baseline/mmpose` 側の依存関係を満たす必要がある．
-
-少なくとも確認すべきもの:
-
-- `torch`
-- `mmcv`
-- `mmengine`
-- `mmdet`
-- `mmpose`
-
-現時点の確認結果:
-
-- 現在のシステム Python は `3.13.11` で，baseline には不向き
-- `baseline/.venv` は `3.10.13`
-- `torch==2.11.0`, `torchvision==0.26.0` までは導入済み
-- `mmcv==2.1.0` は macOS arm64 で build に失敗
-
-そのため，実務上はローカルネイティブ環境より Docker の方が堅い．
-
-### 2. Prepare data
-
-データ配置の基準はこのリポジトリの `data/SoccerNet/SpiideoSynLoc`．
-
-公式 baseline はこのデータを前提に動くため，dataset download が完了していることが必要．
-
-### 3. Get pretrained checkpoint
-
-公式 README にある pretrained model は `research.spiideo.com` から取得する形式になっている．まだこのリポジトリには checkpoint は置いていない．
-
-候補:
-
-- `yoloxpose_tiny_4xb64-300e_640`
-- `yoloxpose_s_4xb64-300e_640`
-- `yoloxpose_m_4xb64-300e_960`
-
-最初は paper / leaderboard 的に `YOLOX-m 960` が基準候補．
-
-checkpoint は例えば以下に置く．
+例えば次のように置く．
 
 ```text
-baseline/checkpoints/yoloxpose_m_4xb64-300e_960.pth
+baseline/checkpoints/yoloxpose_tiny_4xb64-300e_640_epoch_300.pth
+baseline/checkpoints/yoloxpose_m_4xb64-300e_960_epoch_300.pth
 ```
 
-### 4. Run evaluation
+## Docker で validation / test を実行する
 
-このリポジトリでは wrapper script を使う．
+`YOLOX-tiny 640` の例:
 
 ```bash
-./baseline/run_eval.sh baseline/checkpoints/yoloxpose_m_4xb64-300e_960.pth
+zsh baseline/run_eval.sh \
+  baseline/checkpoints/yoloxpose_tiny_4xb64-300e_640_epoch_300.pth \
+  configs/body_bev_position/spiideo_soccernet/docker_yoloxpose_tiny_4xb64-300e_640.py
 ```
 
-challenge 用提出ファイルを出す場合:
+`YOLOX-m 960` の例:
 
 ```bash
-./baseline/run_challenge.sh baseline/checkpoints/yoloxpose_m_4xb64-300e_960.pth
+zsh baseline/run_eval.sh \
+  baseline/checkpoints/yoloxpose_m_4xb64-300e_960_epoch_300.pth
 ```
 
-## Next Work
+第 2 引数を省略した場合は，`YOLOX-m 960` 用の Docker config を使う．
 
-- baseline 実行環境を整える
-- checkpoint を置く場所を決める
-- validation / test / challenge の実行コマンドをこのリポジトリ側に固定する
+## Docker で challenge 用出力を作る
 
-## Docker
-
-Docker daemon が起動していれば，以下で baseline 用コンテナを立ち上げられる．
+`YOLOX-tiny 640` の例:
 
 ```bash
-./baseline/run_mmpose_docker.sh
+zsh baseline/run_challenge.sh \
+  baseline/checkpoints/yoloxpose_tiny_4xb64-300e_640_epoch_300.pth \
+  configs/body_bev_position/spiideo_soccernet/docker_yoloxpose_tiny_4xb64-300e_640.py
 ```
+
+`YOLOX-m 960` の例:
+
+```bash
+zsh baseline/run_challenge.sh \
+  baseline/checkpoints/yoloxpose_m_4xb64-300e_960_epoch_300.pth
+```
+
+## notebook で実行する
+
+`Google Colab` など notebook 環境で実行する場合は [baseline/Colab_Jupyter.md](/Users/minorisugimura/GitHub/soccerNet2026/baseline/Colab_Jupyter.md) を参照すること．
