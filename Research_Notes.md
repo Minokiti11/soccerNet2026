@@ -2,25 +2,25 @@
 
 ## Scope
 
-このメモは、`Spiideo SoccerNet SynLoc 2026` に近い過去タスク・関連研究をもとに、実際に有望そうなパイプラインとアルゴリズムを整理したものである。主眼は「このコンペで何を優先して試すべきか」を決めることにある。
+このメモは，`Spiideo SoccerNet SynLoc 2026` に近い過去タスク・関連研究をもとに，実際に有望そうなパイプラインとアルゴリズムを整理したものである．主眼は「このコンペで何を優先して試すべきか」を決めることにある．
 
 ## Executive Summary
 
-* SynLoc 系では `bbox -> bottom center -> camera projection` より `pose/keypoint -> pelvis_ground -> camera projection` が明確に有利。
+* SynLoc 系では `bbox -> bottom center -> camera projection` より `pose/keypoint -> pelvis_ground -> camera projection` が明確に有利．
 
-* 公式 baseline も `YOLOX-pose` 系で、`pelvis` と `pelvis_ground` の 2 keypoint を直接回帰する。
+* 公式 baseline も `YOLOX-pose` 系で，`pelvis` と `pelvis_ground` の 2 keypoint を直接回帰する．
 
-* 去年や近い年の broadcast 系タスクで強い `tracking + ReID + field calibration` は、SynLoc 2026 では主役ではない。
+* 去年や近い年の broadcast 系タスクで強い `tracking + ReID + field calibration` は，SynLoc 2026 では主役ではない．
 
-* SynLoc 2026 は camera calibration が与えられる単一フレーム課題なので、勝負どころは「どの image-space 表現から world-space の位置を最も正確に復元できるか」にある。
+* SynLoc 2026 は camera calibration が与えられる単一フレーム課題なので，勝負どころは「どの image-space 表現から world-space の位置を最も正確に復元できるか」にある．
 
-* 実装優先度としては、まず baseline 再現、その後 `higher resolution`, `better point representation`, `synthetic-to-real adaptation` を入れるのが妥当。
+* 実装優先度としては，まず baseline 再現，その後 `higher resolution`, `better point representation`, `synthetic-to-real adaptation` を入れるのが妥当．
 
 ## 1. Official SynLoc Pipeline
 
 ### 1.1 Devkit baseline
 
-`sskit` の簡易 baseline は、一般物体検出器で人を検出し、bbox 下辺中央を選手位置とみなして地面へ射影する。
+`sskit` の簡易 baseline は，一般物体検出器で人を検出し，bbox 下辺中央を選手位置とみなして地面へ射影する．
 
 概略:
 
@@ -29,7 +29,7 @@
 3. camera calibration で ground plane に射影
 4. world coordinate 上で評価
 
-これは最小構成としては分かりやすいが、真の player location の proxy としては粗い。
+これは最小構成としては分かりやすいが，真の player location の proxy としては粗い．
 
 Source:
 
@@ -37,7 +37,7 @@ Source:
 
 ### 1.2 Official mmpose baseline
 
-公式 baseline は `Spiideo/mmpose` の `spiideo_scenes` ブランチで、`YOLOX-pose` ベースの top-down pose 系を使う。
+公式 baseline は `Spiideo/mmpose` の `spiideo_scenes` ブランチで，`YOLOX-pose` ベースの top-down pose 系を使う．
 
 重要な点:
 
@@ -49,7 +49,7 @@ Source:
 
 * `pelvis_ground`
 
-`pelvis_ground` は player pelvis を ground plane に正射影した点に対応する。評価もこの点を world-space に戻した位置で行う。
+`pelvis_ground` は player pelvis を ground plane に正射影した点に対応する．評価もこの点を world-space に戻した位置で行う．
 
 Source:
 
@@ -65,13 +65,13 @@ SynLoc 論文では，bbox ベースと pose ベースを直接比較してい�
 
 論文中の主要な示唆:
 
-* bbox の下辺中央は、真の player ground position の近似として弱い
+* bbox の下辺中央は，真の player ground position の近似として弱い
 
 * `pelvis` （'骨盤'という意味）と `ground projection of pelvis` のような幾何的に意味のある点を学習した方がよい
 
 * 入力解像度を上げると成績がかなり改善する
 
-論文の Table 2 では、`YOLOX-m` の比較で以下の傾向が見える．
+論文の Table 2 では，`YOLOX-m` の比較で以下の傾向が見える．
 
 * `bbox 960x960`: `mAP-LocSim 52.4`
 
@@ -108,15 +108,15 @@ Source:
 
 ### 3.2 Player localization from a single moving view
 
-過去研究 `Individual Locating of Soccer Players from a Single Moving View` でも、
+過去研究 `Individual Locating of Soccer Players from a Single Moving View` でも，
 
 1. sports field registration
 2. 2D player tracking
 3. homography による pitch projection
 
-の 3 段構成が中心である。ここでも本質は、camera が未知または時間変化することへの対処にある。
+の 3 段構成が中心である．ここでも本質は，camera が未知または時間変化することへの対処にある．
 
-SynLoc 2026 では calibration が既知なので、この pipeline 全体を持ち込む必要はない。参考にすべきなのは「image-space から world-space への幾何の扱い方」であり，tracking 系そのものではない．
+SynLoc 2026 では calibration が既知なので，この pipeline 全体を持ち込む必要はない．参考にすべきなのは「image-space から world-space への幾何の扱い方」であり，tracking 系そのものではない．
 
 Source:
 
@@ -146,13 +146,13 @@ Source:
 
 * camera calibration
 
-これらは broadcast video や minimap reconstruction では重要だが、SynLoc 2026 の単一フレーム challenge には関係ない。
+これらは broadcast video や minimap reconstruction では重要だが，SynLoc 2026 の単一フレーム challenge には関係ない．
 
 ## 5. Candidate Improvement Directions
 
 ### 5.1 Better point representation
 
-最も自然な改善案は、`2-keypoint` 表現を拡張すること。
+最も自然な改善案は，`2-keypoint` 表現を拡張すること．
 
 候補:
 
@@ -170,7 +170,7 @@ Source:
 
 ### 5.2 Direct world-coordinate regression
 
-image keypoint を経由せず、検出ごとに `(x_world, y_world)` を直接回帰する案もある。
+image keypoint を経由せず，検出ごとに `(x_world, y_world)` を直接回帰する案もある．
 
 利点:
 
@@ -186,11 +186,11 @@ image keypoint を経由せず、検出ごとに `(x_world, y_world)` を直接�
 
 * multi-person assignment の扱いを自前で設計する必要が出やすい
 
-したがって、最初の改良としてはやや重い。
+したがって，最初の改良としてはやや重い．
 
 ### 5.3 Higher resolution and crop strategy
 
-論文結果から、`640 -> 960` でかなり改善する。さらに遠方選手向けに以下も検討余地がある。
+論文結果から，`640 -> 960` でかなり改善する．さらに遠方選手向けに以下も検討余地がある．
 
 * 4K 原画像を活かす multi-scale inference
 
@@ -198,11 +198,11 @@ image keypoint を経由せず、検出ごとに `(x_world, y_world)` を直接�
 
 * half-pitch 構造を意識した crop
 
-このタスクでは pitch 全体が写り、遠距離選手が極小になるため、単純 resize には限界がある可能性が高い。
+このタスクでは pitch 全体が写り，遠距離選手が極小になるため，単純 resize には限界がある可能性が高い．
 
 ### 5.4 Synthetic-to-real adaptation
 
-SynLoc は synthetic player を real background に合成したデータであり、ドメインギャップは依然としてある。
+SynLoc は synthetic player を real background に合成したデータであり，ドメインギャップは依然としてある．
 
 有望な方向:
 
@@ -222,11 +222,11 @@ SynLoc は synthetic player を real background に合成したデータであ�
 
 * 公開データでの person / pose pretraining
 
-ただし、利用データは challenge rules の範囲内である必要がある。
+ただし，利用データは challenge rules の範囲内である必要がある．
 
 ### 5.5 Confidence calibration
 
-`mAP-LocSim` は「見つけること」と「位置が近いこと」の両方を見るため、confidence の設計が重要である。
+`mAP-LocSim` は「見つけること」と「位置が近いこと」の両方を見るため，confidence の設計が重要である．
 
 やるべきこと:
 
@@ -238,7 +238,7 @@ SynLoc は synthetic player を real background に合成したデータであ�
 
 ## 6. Recommended Order Of Work
 
-このリポジトリでの優先順位は以下が妥当。
+このリポジトリでの優先順位は以下が妥当．
 
 1. 公式 baseline を再現する
 2. `960x960` 系を安定実行する
@@ -250,7 +250,7 @@ SynLoc は synthetic player を real background に合成したデータであ�
 
 ## 7. Working Hypotheses
 
-現時点での作業仮説は以下。
+現時点での作業仮説は以下．
 
 * 最初の実用的な上積みは `bbox detector` ではなく `pose/keypoint localization` から出る
 
@@ -258,7 +258,7 @@ SynLoc は synthetic player を real background に合成したデータであ�
 
 * `pelvis_ground` を直接当てる設計は task と metric に素直に一致している
 
-* calibration 既知という条件を活かし、tracking や registration に寄り道しない方がよい
+* calibration 既知という条件を活かし，tracking や registration に寄り道しない方がよい
 
 ## Sources
 
