@@ -145,7 +145,7 @@ competition 用に配布・消費されるのは上の COCO 風形式だが，`s
 
 #### 1. 直接 `position_on_pitch` を書く形式
 
-もっとも素直な形式は，各 detection が直接 pitch 座標を持つ JSON list である．
+各 detection が直接 pitch 座標を持つ JSON list である．
 
 ```json
 [
@@ -216,22 +216,6 @@ competition 用に配布・消費されるのは上の COCO 風形式だが，`s
 
 `Spiideo/mmpose` の `tools/test.py --challenge` は，validation を一度回して最適 `score_threshold` を決めた上で，`results.json` と `metadata.json` を生成し，さらに `challenge_submission.zip` を作る．
 
-## Coordinate Systems
-
-`sskit` の camera model は，`standard projective pinhole camera model with radial distortion` と説明されている．使われる変換は概ね次の通りである．
-
-```text
-Camera pixel
-  -> normalize()
-Normalized image
-  -> undistort()
-Undistorted image
-  -> undistorted_to_ground()
-World / ground plane
-```
-
-逆方向には `world_to_image()` がある．
-
 ## Evaluation
 
 評価指標は `mAP-LocSim` である．これは COCO 形式の `mAP` をベースにしつつ，通常の `IoU` の代わりに `LocSim` を使って，検出とピッチ座標推定を同時に評価する指標である．
@@ -271,7 +255,7 @@ d^2 = (x_dt - x_gt)^2 + (y_dt - y_gt)^2
 LocSim = exp(log(0.05) * d^2 / tau^2)
 ```
 
-で類似度を定義している．この challenge では許容距離パラメータは `tau = 1` で固定である．同値な書き方をすると
+で類似度を定義している．この challenge では許容距離パラメータは `tau = 1` で固定であるから，同値な書き方をすると
 
 ```text
 LocSim = 0.05^(d^2)
@@ -286,26 +270,6 @@ LocSim = 0.05^(d^2)
 * 距離が増えると指数関数的に急減する
 
 frame accuracy では，各画像について「偽陽性も偽陰性もなく，全選手を正しく検出できたか」を見る．ここでの境界は `LocSim = 0.5` であり，およそ `0.48m` の位置誤差に対応する．
-
-baseline config は evaluation を 3 系統に分けている．
-
-* `bbox`：通常の bbox 検出評価
-
-* `locsim_bbox`：bbox の下辺中央を pitch へ射影した比較用指標
-
-* `locsim`：予測 `position_on_pitch`，または `position_from_keypoint_index` で指定した keypoint を地面へ射影した指標
-
-challenge で本当に効くのは `locsim` である．
-
-## Submission / Validation Practice
-
-* validation で `score_threshold` を決める
-
-* test / challenge ではその threshold を固定して使う
-
-* 提出前に `results.json` と `metadata.json` の整合性を確認する
-
-* baseline convenience format を使う場合は，`metadata.json` に `position_from_keypoint_index` を必ず入れる
 
 ## Data Usage Rules
 
@@ -331,21 +295,11 @@ challenge で本当に効くのは `locsim` である．
 
 * `2025-09-09`：challenge evaluation server open
 
-* `2026-04-25`：evaluation server close
+* `2026-04-24`：evaluation server close
 
 * `2026-05-01`：report submission deadline
 
 * `TBD`：CVSports Workshop at CVPR 2026 で表彰
-
-## Practical Implications For This Repo
-
-* まず baseline の validation / test / challenge 出力を再現する
-
-* `score_threshold` を validation で固定し，どの checkpoint と設定で決めたかを記録する
-
-* `position_on_pitch` の直書き形式と，baseline convenience format の両方を理解しておく
-
-* 改良案を試す場合も，camera calibration 推定ではなく，「より良い player ground point をどれだけ安定に出せるか」を中心に考える
 
 ## Sources
 
