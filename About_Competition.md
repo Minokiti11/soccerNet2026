@@ -111,8 +111,6 @@ SoccerNet 2026 の公式ページと `sskit` README では，この課題を `Si
 
 * `position_on_pitch`：pitch 上の真値位置．実装上は最初の 2 次元 `x, y` が評価に使われる
 
-補足として，`sskit` README の最小例では `position_on_pitch` を `[x, y, 0]` と書いている．一方で `make_coco.py` は `[x, y]` を書く．`LocSimCOCOeval` の実装は先頭 2 次元しか参照しないため，実装上はどちらでも扱えると読める．これはコードからの推論である．
-
 ### アノテーションの元データ
 
 competition 用に配布・消費されるのは上の COCO 風形式だが，`sskit/make_coco.py` を見ると，元データはさらに低レベルな scene 情報から作られている．少なくとも次のようなファイル群を参照している．
@@ -140,8 +138,6 @@ competition 用に配布・消費されるのは上の COCO 風形式だが，`s
 * RGB 画像 1 枚
 
 * その画像の `camera_matrix`, `dist_poly`, `undist_poly`
-
-* 学習時のみ，各人物の bbox と `pelvis`, `pelvis_ground`, `position_on_pitch`
 
 ### Output の 2 形式
 
